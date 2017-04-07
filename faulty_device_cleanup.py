@@ -78,36 +78,41 @@ class FaultyDevicesCleaner(object):
         host_name = string.strip(self.host_name)
         instance_uuids = [inst.uuid for inst in
                           objects.InstanceList.get_by_host(context, host_name)]
-        bdms = objects.BlockDeviceMappingList\
-                      .get_by_instance_uuids(context, instance_uuids)
-
-        for bdm in bdms:
-            conn_info = bdm.connection_info and json.loads(bdm.connection_info)
-
-            if conn_info is not None and 'data' in conn_info:
-                if 'target_iqns' in conn_info['data']:
-                    target_iqns = conn_info['data']['target_iqns']
-                    # Compatible check for VNX icehouse driver
-                    if 'target_luns' in conn_info['data']:
-                        target_luns = conn_info['data']['target_luns']
-                    else:
-                        target_luns = ([conn_info['data']['target_lun']]
+	
+	
+ 	for instance_uuid in instance_uuids:
+	
+        	bdms = objects.BlockDeviceMappingList\
+                          .get_by_instance_uuid(context, instance_uuid)
+                
+                for bdm in bdms:
+		    if bdm.connection_info is None:
+		        continue		    
+            	    conn_info = bdm.connection_info and json.loads(bdm.connection_info)
+		    if conn_info is not None and 'data' in conn_info:
+               	        if 'target_iqns' in conn_info['data']:
+                            target_iqns = conn_info['data']['target_iqns']
+                            # Compatible check for VNX icehouse driver
+                            if 'target_luns' in conn_info['data']:
+                                target_luns = conn_info['data']['target_luns']
+                            else:
+                                target_luns = ([conn_info['data']['target_lun']]
                                        * len(target_iqns))
-                elif 'target_iqn' in conn_info['data']:
-                    target_iqns = [conn_info['data']['target_iqn']]
-                    target_luns = [conn_info['data']['target_lun']]
-                else:
-                    target_iqns = []
-                    target_luns = []
-                for target_iqn, target_lun in zip(target_iqns, target_luns):
-                    if 'com.emc' in target_iqn:
-                        target_info = {
-                            'target_iqn': target_iqn,
-                            'target_lun': target_lun,
-                        }
-                        target_info_list.append(target_info)
-
-        return target_info_list
+                        elif 'target_iqn' in conn_info['data']:
+                            target_iqns = [conn_info['data']['target_iqn']]
+                            target_luns = [conn_info['data']['target_lun']]
+                        else:
+                            target_iqns = []
+                            target_luns = []
+                        for target_iqn, target_lun in zip(target_iqns, target_luns):
+                            if 'com.emc' in target_iqn:
+                                 target_info = {
+                                     'target_iqn': target_iqn,
+                                     'target_lun': target_lun,
+                                 }
+                                 target_info_list.append(target_info)
+			
+	return target_info_list
 
     def _get_ncpu_emc_target_info_set(self):
         target_info_set = set()
@@ -135,15 +140,17 @@ class FaultyDevicesCleaner(object):
     def _get_non_ncpu_target_info_map(self):
         # Group the paths by target_info_key
         ncpu_target_info_set = self._get_ncpu_emc_target_info_set()
+
         device_paths = self._get_emc_device_paths()
-        target_info_map = {}
+	target_info_map = {}
         for path in device_paths:
             target_info_key = self._get_target_info_key(path)
+	    
             if target_info_key in ncpu_target_info_set:
-                continue
-            if target_info_key not in target_info_map:
-                target_info_map[target_info_key] = []
-            target_info_map[target_info_key].append(path)
+                if target_info_key not in target_info_map:		
+		    target_info_map[target_info_key] = []
+		target_info_map[target_info_key].append(path)
+
         return target_info_map
 
     def _all_related_paths_faulty(self, paths):
@@ -176,6 +183,9 @@ class FaultyDevicesCleaner(object):
             if self._all_related_paths_faulty(paths):
                 if self.detection_only:
                     self.faulty_path_num += len(paths)
+		    for path in paths:
+		        print("Info: Faulty iSCSI path %s." % path)
+
                     # Check next without deleting the paths
                     continue
                 self._delete_all_related_paths(paths)
