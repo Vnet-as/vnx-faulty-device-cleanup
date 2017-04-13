@@ -171,8 +171,8 @@ class FaultyDevicesCleaner(object):
             device_delete = '/sys/block/%s/device/delete' % device_name
             if os.path.exists(device_delete):
                 # Copy '1' from stdin to the device delete control file
-                utils.execute('cp', '/dev/stdin', device_delete,
-                              process_input='1', run_as_root=True)
+                #utils.execute('cp', '/dev/stdin', device_delete,
+                #              process_input='1', run_as_root=True)
                 print("Info: Deleted faulty iSCSI path %s." % path)
             else:
                 print("Warning: Unable to delete %s." % real_path)
@@ -288,7 +288,7 @@ def main():
     if len(sys.argv) < 3 or sys.argv[1] != '--config-file':
         usage()
         exit(1)
-    detection_only = False
+    detection_only = True
     if '--detection-only' in sys.argv:
         detection_only = True
         sys.argv.remove('--detection-only')
